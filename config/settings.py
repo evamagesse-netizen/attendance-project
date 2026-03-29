@@ -13,7 +13,12 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() in ("1", "true", "yes")
 
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+_DEFAULT_ALLOWED_HOSTS = "localhost,127.0.0.1,barcodeattendance.pythonanywhere.com"
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", _DEFAULT_ALLOWED_HOSTS).split(",")
+    if h.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -79,8 +84,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+_DEFAULT_CSRF_ORIGINS = "https://barcodeattendance.pythonanywhere.com"
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
-    for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", _DEFAULT_CSRF_ORIGINS).split(",")
     if o.strip()
 ]
