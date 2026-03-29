@@ -13,6 +13,7 @@ from .models import Attendance, Employee
 
 BARCODE_MAX_LEN = 128
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9\-_.]+$")
+SCAN_MODES = frozenset({"check-in", "check-out"})
 
 
 def _parse_json_body(request):
@@ -22,6 +23,15 @@ def _parse_json_body(request):
         return json.loads(request.body.decode("utf-8")), None
     except (json.JSONDecodeError, UnicodeDecodeError):
         return None, "Invalid JSON."
+
+
+def _validate_mode(raw):
+    if raw is None:
+        return None, 'Scan mode is required: use "check-in" or "check-out".'
+    mode = str(raw).strip()
+    if mode not in SCAN_MODES:
+        return None, 'Scan mode must be "check-in" or "check-out".'
+    return mode, None
 
 
 def _validate_barcode(raw):
@@ -95,6 +105,13 @@ def scan_barcode(request):
             status=400,
         )
 
+    mode, merr = _validate_mode(data.get("mode") if isinstance(data, dict) else None)
+    if merr:
+        return JsonResponse(
+            {"status": "error", "action": None, "employee_name": None, "message": merr},
+            status=400,
+        )
+
     try:
         employee = Employee.objects.get(barcode=barcode)
     except Employee.DoesNotExist:
@@ -111,20 +128,52 @@ def scan_barcode(request):
     today = timezone.localdate()
     now = timezone.now()
 
-    attendance, created = Attendance.objects.get_or_create(
-        employee=employee,
-        date=today,
-        defaults={"check_in": now},
-    )
+    if mode == "check-in":
+        try:
+            attendance = Attendance.objects.get(employee=employee, date=today)
+        except Attendance.DoesNotExist:
+            Attendance.objects.create(employee=employee, date=today, check_in=now)
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "action": "check-in",
+                    "employee_name": employee.name,
+                    "message": f"Welcome, {employee.name}.",
+                }
+            )
 
-    if created:
+        if attendance.check_out is None:
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "action": None,
+                    "employee_name": employee.name,
+                    "message": "Already checked in. Select Check out to scan departure.",
+                },
+                status=409,
+            )
         return JsonResponse(
             {
-                "status": "success",
-                "action": "check-in",
+                "status": "error",
+                "action": None,
                 "employee_name": employee.name,
-                "message": f"Welcome, {employee.name}.",
-            }
+                "message": "Attendance for today is already complete. Check in is not allowed.",
+            },
+            status=409,
+        )
+
+    # mode == "check-out"
+    try:
+        attendance = Attendance.objects.get(employee=employee, date=today)
+    except Attendance.DoesNotExist:
+        return JsonResponse(
+            {
+                "status": "error",
+                "action": None,
+                "employee_name": employee.name,
+                "message": "No check-in for today. Select Check in first.",
+            },
+            status=400,
         )
 
     if attendance.check_out is not None:
@@ -133,7 +182,7 @@ def scan_barcode(request):
                 "status": "error",
                 "action": None,
                 "employee_name": employee.name,
-                "message": "Already checked out for today. Double check-out is not allowed.",
+                "message": "Already checked out for today.",
             },
             status=409,
         )

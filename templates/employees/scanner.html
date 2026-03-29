@@ -20,7 +20,18 @@
 
   <section class="card scanner-card">
     <h1 class="page-title">Check in / out</h1>
-    <p class="muted">Point the camera at an employee barcode. The first scan checks in; the second checks out.</p>
+    <p class="muted" id="mode-hint">Choose an action, then scan the employee QR code.</p>
+
+    <div class="mode-toggle" role="radiogroup" aria-label="Scan action">
+      <label class="mode-option">
+        <input type="radio" name="scan-mode" value="check-in" checked>
+        <span class="mode-option__ui">Check in</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="scan-mode" value="check-out">
+        <span class="mode-option__ui">Check out</span>
+      </label>
+    </div>
 
     <div id="reader" class="qr-reader"></div>
     <div class="scan-overlay" aria-hidden="true">

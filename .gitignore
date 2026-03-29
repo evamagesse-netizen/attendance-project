@@ -7,6 +7,9 @@ ENV/
 # Collected static files (production)
 staticfiles/
 
+# User uploads (QR images)
+media/
+
 # SQLite / local database
 *.sqlite3
 db.sqlite3

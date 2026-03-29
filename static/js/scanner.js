@@ -39,6 +39,23 @@
     }
   }
 
+  function bindModeHint() {
+    const hint = document.getElementById("mode-hint");
+    const radios = document.querySelectorAll('input[name="scan-mode"]');
+    function update() {
+      if (!hint) return;
+      if (getScanMode() === "check-out") {
+        hint.textContent = "Scanning will record check-out (leave).";
+      } else {
+        hint.textContent = "Scanning will record check-in (arrival).";
+      }
+    }
+    radios.forEach(function (r) {
+      r.addEventListener("change", update);
+    });
+    update();
+  }
+
   function formatClock() {
     const el = document.getElementById("clock");
     if (!el) return;
@@ -83,7 +100,12 @@
     if (loadingEl) loadingEl.hidden = false;
   }
 
-  async function postBarcode(barcode) {
+  function getScanMode() {
+    const el = document.querySelector('input[name="scan-mode"]:checked');
+    return el && el.value ? el.value : "check-in";
+  }
+
+  async function postBarcode(barcode, mode) {
     const token = getCookie("csrftoken");
     let res;
     try {
@@ -95,7 +117,10 @@
           Accept: "application/json",
         },
         credentials: "same-origin",
-        body: JSON.stringify({ barcode: String(barcode).trim() }),
+        body: JSON.stringify({
+          barcode: String(barcode).trim(),
+          mode: mode,
+        }),
       });
     } catch (e) {
       throw new Error("Network error. Check your connection.");
@@ -120,7 +145,8 @@
     busy = true;
 
     try {
-      const data = await postBarcode(decodedText);
+      const mode = getScanMode();
+      const data = await postBarcode(decodedText, mode);
       const name = data.employee_name || "Employee";
       if (data.status === "success" && data.action === "check-in") {
         playSuccessSound();
@@ -174,6 +200,7 @@
       });
   }
 
+  bindModeHint();
   formatClock();
   showLoading();
   if (document.readyState === "loading") {
