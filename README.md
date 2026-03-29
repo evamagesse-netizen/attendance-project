@@ -38,6 +38,24 @@ Set `CSRF_TRUSTED_ORIGINS` when using a public origin, for example:
 export DJANGO_CSRF_TRUSTED_ORIGINS="https://your-host.example"
 ```
 
+## Static files (production / PythonAnywhere)
+
+With `DEBUG=false`, CSS and JS are served from the collected bundle via **WhiteNoise**. After pulling code or changing static assets, run:
+
+```bash
+pip install -r requirements.txt
+python manage.py collectstatic --noinput
+```
+
+Then reload the web app. Ensure `DJANGO_DEBUG=false` on the server. The `staticfiles/` directory is generated (add it to `.gitignore` if you do not commit it).
+
+### PythonAnywhere checklist
+
+1. Set environment variables: `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS` as needed.
+2. Install dependencies and run migrations and `collectstatic` as above.
+3. Point the WSGI file at your project’s `config.wsgi` (as in Django’s PA guide).
+4. **Reload** the web app.
+
 ## Configuration (optional)
 
 | Variable | Purpose |
