@@ -1,0 +1,32 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Attendance{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{% url 'scanner' %}">Attendance</a>
+      <nav class="nav">
+        <a href="{% url 'scanner' %}">Scanner</a>
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        <a href="/admin/">Admin</a>
+      </nav>
+    </div>
+  </header>
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <p class="muted small">Barcode attendance demo · Secure contexts (HTTPS) required for camera on mobile.</p>
+    </div>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

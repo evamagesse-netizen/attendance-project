@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard · Attendance{% endblock %}
+
+{% block content %}
+<div class="container dashboard-page">
+  <h1 class="page-title">Attendance dashboard</h1>
+
+  <form method="get" action="{% url 'dashboard' %}" class="filter-bar card">
+    <label for="date">Filter by date</label>
+    <input type="date" id="date" name="date" value="{{ filter_date|date:'Y-m-d' }}">
+    <button type="submit" class="btn btn--primary">Apply</button>
+  </form>
+
+  <section class="stats-grid">
+    <div class="card stat-card">
+      <p class="stat-label">Total employees (registered)</p>
+      <p class="stat-value">{{ total_employees }}</p>
+    </div>
+    <div class="card stat-card">
+      <p class="stat-label">Checked in (this date)</p>
+      <p class="stat-value stat-value--indigo">{{ checked_in_count }}</p>
+    </div>
+    <div class="card stat-card">
+      <p class="stat-label">Checked out (this date)</p>
+      <p class="stat-value stat-value--success">{{ checked_out_count }}</p>
+    </div>
+  </section>
+
+  <section class="card table-card">
+    <h2 class="section-heading">Records for {{ filter_date|date:"l, F j, Y" }}</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+          <tr class="{% if r.is_late_check_in %}row-late{% endif %}">
+            <td>{{ r.employee.name }}</td>
+            <td>{{ r.date|date:"M j, Y" }}</td>
+            <td>
+              {{ r.check_in|date:"H:i:s" }}
+              {% if r.is_late_check_in %}<span class="badge badge--warn">Late</span>{% endif %}
+            </td>
+            <td>{% if r.check_out %}{{ r.check_out|date:"H:i:s" }}{% else %}—{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="muted">No attendance for this date.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="muted small">Late = check-in after 9:00 AM ({{ time_zone }}).</p>
+</div>
+{% endblock %}

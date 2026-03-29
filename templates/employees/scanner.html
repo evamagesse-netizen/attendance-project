@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Scan · Attendance{% endblock %}
+
+{% block extra_head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container scanner-page">
+  <div class="https-banner card card--info" role="status">
+    <strong>Camera access:</strong> Mobile browsers require a <strong>secure context</strong> (HTTPS or localhost). Use HTTPS in production or test on <code>localhost</code> on your computer.
+  </div>
+
+  <section class="card clock-card">
+    <p class="muted small mb-0">Current time</p>
+    <p id="clock" class="clock-display">—</p>
+  </section>
+
+  <section class="card scanner-card">
+    <h1 class="page-title">Check in / out</h1>
+    <p class="muted">Point the camera at an employee barcode. The first scan checks in; the second checks out.</p>
+
+    <div id="reader" class="qr-reader"></div>
+    <div class="scan-overlay" aria-hidden="true">
+      <div class="scan-frame"></div>
+    </div>
+
+    <div id="loading" class="loading-state" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Starting camera…</p>
+    </div>
+
+    <div id="result" class="result-panel" hidden>
+      <div id="result-icon" class="result-icon" aria-hidden="true"></div>
+      <p id="result-title" class="result-title"></p>
+      <p id="result-detail" class="result-detail muted"></p>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/scanner.js' %}"></script>
+{% endblock %}

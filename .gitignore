@@ -1,0 +1,19 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# SQLite / local database
+*.sqlite3
+db.sqlite3
+
+# Environment
+.env
+
+# Python
+*.pyc
+__pycache__/
+
+# OS
+.DS_Store
