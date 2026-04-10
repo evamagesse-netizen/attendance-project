@@ -15,6 +15,7 @@ urlpatterns = [
         employee_views.admin_leave_permissions_page,
         name="admin_leave_permissions_page",
     ),
+    path("admin/dashboard/employees/", employee_views.admin_employees_page, name="admin_employees_page"),
     path("admin/dashboard/admin-users/", employee_views.admin_users_page, name="admin_users_page"),
     path("admin/", admin.site.urls),
     path("", include("employees.urls")),

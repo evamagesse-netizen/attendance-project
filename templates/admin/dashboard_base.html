@@ -6,6 +6,7 @@
     <h2 class="section-heading">Admin menu</h2>
     <nav class="admin-drawer-nav">
       <a class="{% if admin_section == 'overview' %}is-active{% endif %}" href="{% url 'admin_dashboard' %}">Overview</a>
+      <a class="{% if admin_section == 'employees' %}is-active{% endif %}" href="{% url 'admin_employees_page' %}">Employees</a>
       <a class="{% if admin_section == 'time-rules' %}is-active{% endif %}" href="{% url 'admin_time_rules_page' %}">Employee time rules</a>
       <a class="{% if admin_section == 'permissions' %}is-active{% endif %}" href="{% url 'admin_leave_permissions_page' %}">Leave permissions</a>
       <a class="{% if admin_section == 'admins' %}is-active{% endif %}" href="{% url 'admin_users_page' %}">Admin users</a>

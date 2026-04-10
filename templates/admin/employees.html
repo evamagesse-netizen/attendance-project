@@ -1,0 +1,91 @@
+{% extends "admin/dashboard_base.html" %}
+
+{% block title %}Employees · Attendance{% endblock %}
+
+{% block admin_content %}
+<section class="card table-card">
+  <h1 class="page-title">Employees</h1>
+  <p class="muted">Add, edit, and delete employees. Barcode and QR are available for scan cards.</p>
+  <form method="post" action="{% url 'admin_employees_page' %}" class="filter-bar">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create_employee">
+    <div>
+      <label for="create_name">Name</label>
+      <input id="create_name" name="name" type="text" required>
+    </div>
+    <div>
+      <label for="create_employee_id">Employee ID</label>
+      <input id="create_employee_id" name="employee_id" type="text" required>
+    </div>
+    <div>
+      <label for="create_barcode">Barcode (optional)</label>
+      <input id="create_barcode" name="barcode" type="text">
+    </div>
+    <button type="submit" class="btn btn--primary">Add employee</button>
+  </form>
+</section>
+
+<section class="card table-card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Employee ID</th>
+          <th>Barcode</th>
+          <th>QR code</th>
+          <th>Download</th>
+          <th>Update</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr>
+          <td>{{ emp.name }}</td>
+          <td>{{ emp.employee_id }}</td>
+          <td><code>{{ emp.barcode }}</code></td>
+          <td>
+            {% if emp.barcode_image %}
+              <img src="{{ emp.barcode_image.url }}" alt="QR for {{ emp.employee_id }}" class="qr-thumb">
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if emp.barcode_image %}
+              <a class="btn" href="{{ emp.barcode_image.url }}" download="{{ emp.employee_id }}_barcode_qr.png">Download</a>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="{% url 'admin_employees_page' %}" class="admin-user-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update_employee">
+              <input type="hidden" name="employee_pk" value="{{ emp.id }}">
+              <input type="text" name="name" value="{{ emp.name }}" required>
+              <input type="text" name="employee_id" value="{{ emp.employee_id }}" required>
+              <input type="text" name="barcode" value="{{ emp.barcode }}" placeholder="Barcode">
+              <button type="submit" class="btn btn--primary">Save</button>
+            </form>
+          </td>
+          <td>
+            <form method="post" action="{% url 'admin_employees_page' %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_employee">
+              <input type="hidden" name="employee_pk" value="{{ emp.id }}">
+              <button type="submit" class="btn">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="muted">No employees available.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

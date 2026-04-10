@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib import messages
+from django.db import IntegrityError
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -465,6 +466,88 @@ def admin_users_page(request):
             "admin_users": admin_users,
             "can_manage_admins": request.user.is_superuser,
             "admin_section": "admins",
+        },
+    )
+
+
+@login_required
+@user_passes_test(_is_staff_user)
+@require_http_methods(["GET", "POST"])
+def admin_employees_page(request):
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create_employee":
+            name = (request.POST.get("name") or "").strip()
+            employee_id = (request.POST.get("employee_id") or "").strip()
+            barcode = (request.POST.get("barcode") or "").strip()
+            if not name or not employee_id:
+                messages.error(request, "Name and employee ID are required.")
+                return redirect("admin_employees_page")
+            try:
+                Employee.objects.create(
+                    name=name,
+                    employee_id=employee_id,
+                    barcode=barcode,
+                )
+            except IntegrityError:
+                messages.error(
+                    request,
+                    "Employee ID or barcode already exists. Please use unique values.",
+                )
+                return redirect("admin_employees_page")
+            messages.success(request, f"Employee '{name}' created.")
+            return redirect("admin_employees_page")
+
+        if action == "update_employee":
+            employee_pk = request.POST.get("employee_pk")
+            name = (request.POST.get("name") or "").strip()
+            employee_id = (request.POST.get("employee_id") or "").strip()
+            barcode = (request.POST.get("barcode") or "").strip()
+            try:
+                employee = Employee.objects.get(pk=employee_pk)
+            except (Employee.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Invalid employee selected.")
+                return redirect("admin_employees_page")
+            if not name or not employee_id:
+                messages.error(request, "Name and employee ID are required.")
+                return redirect("admin_employees_page")
+            employee.name = name
+            employee.employee_id = employee_id
+            if barcode:
+                employee.barcode = barcode
+            try:
+                employee.save()
+            except IntegrityError:
+                messages.error(
+                    request,
+                    "Employee ID or barcode already exists. Please use unique values.",
+                )
+                return redirect("admin_employees_page")
+            messages.success(request, f"Employee '{employee.name}' updated.")
+            return redirect("admin_employees_page")
+
+        if action == "delete_employee":
+            employee_pk = request.POST.get("employee_pk")
+            try:
+                employee = Employee.objects.get(pk=employee_pk)
+            except (Employee.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Invalid employee selected.")
+                return redirect("admin_employees_page")
+            employee_name = employee.name
+            employee.delete()
+            messages.success(request, f"Employee '{employee_name}' deleted.")
+            return redirect("admin_employees_page")
+
+        messages.error(request, "Unsupported action.")
+        return redirect("admin_employees_page")
+
+    employees = Employee.objects.all().order_by("name")
+    return render(
+        request,
+        "admin/employees.html",
+        {
+            "employees": employees,
+            "admin_section": "employees",
         },
     )
 

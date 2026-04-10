@@ -389,6 +389,22 @@ a:hover {
   min-width: 180px;
 }
 
+.admin-user-form input[type="text"] {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  min-width: 140px;
+}
+
+.qr-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
 .admin-layout {
   display: grid;
   grid-template-columns: 1fr;
