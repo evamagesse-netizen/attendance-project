@@ -6,5 +6,4 @@ urlpatterns = [
     path("", views.scanner_page, name="scanner"),
     path("scan-barcode/", views.scan_barcode, name="scan_barcode"),
     path("dashboard/", views.dashboard, name="dashboard"),
-    path("admin/dashboard/", views.admin_dashboard, name="admin_dashboard"),
 ]
