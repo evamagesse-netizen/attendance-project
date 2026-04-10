@@ -416,6 +416,10 @@ a:hover {
   color: var(--success);
 }
 
+.dashboard-page .table-card {
+  margin-top: 1rem;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
