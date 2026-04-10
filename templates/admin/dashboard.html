@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Time Rules · Attendance{% endblock %}
+{% block title %}Admin Dashboard · Attendance{% endblock %}
 
 {% block content %}
 <div class="container dashboard-page">
-  <h1 class="page-title">Admin time rules</h1>
-  <p class="muted">Set each employee's report and leave time, then grant temporary leave permission when needed.</p>
+  <h1 class="page-title">Admin dashboard</h1>
+  <p class="muted">Manage employee time rules and leave permissions from one dashboard.</p>
 
   {% if messages %}
     <section class="card">
@@ -16,7 +16,7 @@
   {% endif %}
 
   <section class="card table-card">
-    <h2 class="section-heading">All employees</h2>
+    <h2 class="section-heading">Employees and schedules</h2>
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -34,7 +34,7 @@
             <td>{{ emp.name }}</td>
             <td>{{ emp.employee_id }}</td>
             <td>
-              <form method="post" action="{% url 'admin_time_rules' %}" class="inline-form">
+              <form method="post" action="{% url 'admin_dashboard' %}" class="inline-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="set_schedule">
                 <input type="hidden" name="employee_id" value="{{ emp.id }}">
@@ -60,7 +60,7 @@
 
   <section class="card table-card">
     <h2 class="section-heading">Grant leave permission</h2>
-    <form method="post" action="{% url 'admin_time_rules' %}" class="filter-bar">
+    <form method="post" action="{% url 'admin_dashboard' %}" class="filter-bar">
       {% csrf_token %}
       <input type="hidden" name="action" value="grant_permission">
       <div>

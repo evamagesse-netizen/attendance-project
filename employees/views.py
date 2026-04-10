@@ -237,7 +237,7 @@ def scan_barcode(request):
 @login_required
 @user_passes_test(_is_staff_user)
 @require_http_methods(["GET", "POST"])
-def admin_time_rules(request):
+def admin_dashboard(request):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "set_schedule":
@@ -249,22 +249,22 @@ def admin_time_rules(request):
                 employee = Employee.objects.get(pk=employee_id)
             except (Employee.DoesNotExist, ValueError, TypeError):
                 messages.error(request, "Invalid employee selected.")
-                return redirect("admin_time_rules")
+                return redirect("admin_dashboard")
 
             if not report_time or not leave_time:
                 messages.error(request, "Both report time and leave time are required.")
-                return redirect("admin_time_rules")
+                return redirect("admin_dashboard")
 
             try:
                 parsed_report_time = datetime.strptime(report_time, "%H:%M").time()
                 parsed_leave_time = datetime.strptime(leave_time, "%H:%M").time()
             except ValueError:
                 messages.error(request, "Invalid time format.")
-                return redirect("admin_time_rules")
+                return redirect("admin_dashboard")
 
             if parsed_leave_time <= parsed_report_time:
                 messages.error(request, "Leave time must be after report time.")
-                return redirect("admin_time_rules")
+                return redirect("admin_dashboard")
 
             EmployeeSchedule.objects.update_or_create(
                 employee=employee,
@@ -274,7 +274,7 @@ def admin_time_rules(request):
                 },
             )
             messages.success(request, f"Updated time rules for {employee.name}.")
-            return redirect("admin_time_rules")
+            return redirect("admin_dashboard")
 
         if action == "grant_permission":
             employee_id = request.POST.get("employee_id")
@@ -285,7 +285,7 @@ def admin_time_rules(request):
                 employee = Employee.objects.get(pk=employee_id)
             except (Employee.DoesNotExist, ValueError, TypeError):
                 messages.error(request, "Invalid employee selected.")
-                return redirect("admin_time_rules")
+                return redirect("admin_dashboard")
 
             if not date_raw:
                 permission_date = timezone.localdate()
@@ -294,7 +294,7 @@ def admin_time_rules(request):
                     permission_date = datetime.strptime(date_raw, "%Y-%m-%d").date()
                 except ValueError:
                     messages.error(request, "Invalid permission date.")
-                    return redirect("admin_time_rules")
+                    return redirect("admin_dashboard")
 
             permission = LeavePermission.objects.filter(
                 employee=employee,
@@ -316,10 +316,10 @@ def admin_time_rules(request):
                 request,
                 f"Permission granted for {employee.name} on {permission_date}.",
             )
-            return redirect("admin_time_rules")
+            return redirect("admin_dashboard")
 
         messages.error(request, "Unsupported action.")
-        return redirect("admin_time_rules")
+        return redirect("admin_dashboard")
 
     employees = Employee.objects.all().select_related("schedule")
     today = timezone.localdate()
@@ -330,7 +330,7 @@ def admin_time_rules(request):
     )
     return render(
         request,
-        "employees/admin_time_rules.html",
+        "admin/dashboard.html",
         {
             "employees": employees,
             "active_permissions": active_permissions,
