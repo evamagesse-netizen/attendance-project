@@ -486,7 +486,6 @@ def admin_employees_page(request):
         if action == "create_employee":
             name = (request.POST.get("name") or "").strip()
             employee_id = (request.POST.get("employee_id") or "").strip()
-            barcode = (request.POST.get("barcode") or "").strip()
             if not name or not employee_id:
                 messages.error(request, "Name and employee ID are required.")
                 return redirect("admin_employees_page")
@@ -494,7 +493,6 @@ def admin_employees_page(request):
                 Employee.objects.create(
                     name=name,
                     employee_id=employee_id,
-                    barcode=barcode,
                 )
             except IntegrityError:
                 messages.error(
@@ -509,7 +507,6 @@ def admin_employees_page(request):
             employee_pk = request.POST.get("employee_pk")
             name = (request.POST.get("name") or "").strip()
             employee_id = (request.POST.get("employee_id") or "").strip()
-            barcode = (request.POST.get("barcode") or "").strip()
             try:
                 employee = Employee.objects.get(pk=employee_pk)
             except (Employee.DoesNotExist, ValueError, TypeError):
@@ -520,8 +517,6 @@ def admin_employees_page(request):
                 return redirect("admin_employees_page")
             employee.name = name
             employee.employee_id = employee_id
-            if barcode:
-                employee.barcode = barcode
             try:
                 employee.save()
             except IntegrityError:
