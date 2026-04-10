@@ -60,7 +60,6 @@ class Employee(models.Model):
 
 class EmployeeSchedule(models.Model):
     employee = models.OneToOneField(Employee, on_delete=models.CASCADE, related_name="schedule")
-    report_time = models.TimeField(help_text="Expected check-in time.")
     leave_time = models.TimeField(help_text="Earliest allowed check-out time.")
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -69,6 +68,14 @@ class EmployeeSchedule(models.Model):
 
     def __str__(self):
         return f"Schedule for {self.employee.name}"
+
+
+class AttendancePolicy(models.Model):
+    report_time = models.TimeField(default=dt_time(9, 0), help_text="Global expected check-in time.")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Global policy (report at {self.report_time.strftime('%H:%M')})"
 
 
 class LeavePermission(models.Model):
@@ -110,8 +117,8 @@ class Attendance(models.Model):
 
     @property
     def is_late_check_in(self):
-        """Check-in after scheduled report time (fallback 9:00 AM)."""
+        """Check-in after global report time (fallback 9:00 AM)."""
         local = timezone.localtime(self.check_in)
-        schedule = getattr(self.employee, "schedule", None)
-        expected = schedule.report_time if schedule else dt_time(9, 0)
+        policy = AttendancePolicy.objects.order_by("id").first()
+        expected = policy.report_time if policy else dt_time(9, 0)
         return local.time() > expected

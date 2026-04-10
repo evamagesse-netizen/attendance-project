@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Attendance, Employee, EmployeeSchedule, LeavePermission
+from .models import Attendance, AttendancePolicy, Employee, EmployeeSchedule, LeavePermission
 
 BARCODE_MAX_LEN = 128
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9\-_.]+$")
@@ -248,6 +248,7 @@ def admin_dashboard(request):
     today = timezone.localdate()
     total_employees = Employee.objects.count()
     configured_schedules = EmployeeSchedule.objects.count()
+    policy = AttendancePolicy.objects.order_by("id").first()
     active_permissions_count = LeavePermission.objects.filter(
         date=today, used_at__isnull=True
     ).count()
@@ -259,6 +260,7 @@ def admin_dashboard(request):
             "today": today,
             "total_employees": total_employees,
             "configured_schedules": configured_schedules,
+            "global_report_time": policy.report_time if policy else None,
             "active_permissions_count": active_permissions_count,
             "total_admin_users": total_admin_users,
             "can_manage_admins": request.user.is_superuser,
@@ -272,47 +274,75 @@ def admin_dashboard(request):
 @require_http_methods(["GET", "POST"])
 def admin_time_rules_page(request):
     if request.method == "POST":
-        employee_id = request.POST.get("employee_id")
-        report_time = request.POST.get("report_time")
-        leave_time = request.POST.get("leave_time")
-
-        try:
-            employee = Employee.objects.get(pk=employee_id)
-        except (Employee.DoesNotExist, ValueError, TypeError):
-            messages.error(request, "Invalid employee selected.")
+        action = request.POST.get("action")
+        if action == "set_global_report_time":
+            report_time = request.POST.get("report_time")
+            if not report_time:
+                messages.error(request, "Report time is required.")
+                return redirect("admin_time_rules_page")
+            try:
+                parsed_report_time = datetime.strptime(report_time, "%H:%M").time()
+            except ValueError:
+                messages.error(request, "Invalid time format.")
+                return redirect("admin_time_rules_page")
+            policy, _ = AttendancePolicy.objects.get_or_create(
+                pk=1, defaults={"report_time": parsed_report_time}
+            )
+            if policy.report_time != parsed_report_time:
+                policy.report_time = parsed_report_time
+                policy.save(update_fields=["report_time", "updated_at"])
+            messages.success(request, "Global reporting time updated.")
             return redirect("admin_time_rules_page")
 
-        if not report_time or not leave_time:
-            messages.error(request, "Both report time and leave time are required.")
+        if action == "set_leave_time":
+            employee_id = request.POST.get("employee_id")
+            leave_time = request.POST.get("leave_time")
+
+            try:
+                employee = Employee.objects.get(pk=employee_id)
+            except (Employee.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Invalid employee selected.")
+                return redirect("admin_time_rules_page")
+
+            if not leave_time:
+                messages.error(request, "Leave time is required.")
+                return redirect("admin_time_rules_page")
+
+            try:
+                parsed_leave_time = datetime.strptime(leave_time, "%H:%M").time()
+            except ValueError:
+                messages.error(request, "Invalid time format.")
+                return redirect("admin_time_rules_page")
+
+            policy = AttendancePolicy.objects.order_by("id").first()
+            effective_report = policy.report_time if policy else datetime.strptime("09:00", "%H:%M").time()
+            if parsed_leave_time <= effective_report:
+                messages.error(
+                    request,
+                    "Leave time must be after the global reporting time.",
+                )
+                return redirect("admin_time_rules_page")
+
+            EmployeeSchedule.objects.update_or_create(
+                employee=employee,
+                defaults={
+                    "leave_time": parsed_leave_time,
+                },
+            )
+            messages.success(request, f"Updated leave time for {employee.name}.")
             return redirect("admin_time_rules_page")
 
-        try:
-            parsed_report_time = datetime.strptime(report_time, "%H:%M").time()
-            parsed_leave_time = datetime.strptime(leave_time, "%H:%M").time()
-        except ValueError:
-            messages.error(request, "Invalid time format.")
-            return redirect("admin_time_rules_page")
-
-        if parsed_leave_time <= parsed_report_time:
-            messages.error(request, "Leave time must be after report time.")
-            return redirect("admin_time_rules_page")
-
-        EmployeeSchedule.objects.update_or_create(
-            employee=employee,
-            defaults={
-                "report_time": parsed_report_time,
-                "leave_time": parsed_leave_time,
-            },
-        )
-        messages.success(request, f"Updated time rules for {employee.name}.")
+        messages.error(request, "Unsupported action.")
         return redirect("admin_time_rules_page")
 
     employees = Employee.objects.all().select_related("schedule")
+    policy = AttendancePolicy.objects.order_by("id").first()
     return render(
         request,
         "admin/time_rules.html",
         {
             "employees": employees,
+            "global_report_time": policy.report_time if policy else None,
             "admin_section": "time-rules",
         },
     )

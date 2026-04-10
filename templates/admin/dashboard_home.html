@@ -14,8 +14,12 @@
     <p class="stat-value">{{ total_employees }}</p>
   </div>
   <div class="card stat-card">
-    <p class="stat-label">Schedules configured</p>
+    <p class="stat-label">Leave-time rules configured</p>
     <p class="stat-value stat-value--indigo">{{ configured_schedules }}</p>
+  </div>
+  <div class="card stat-card">
+    <p class="stat-label">Global report time</p>
+    <p class="stat-value">{% if global_report_time %}{{ global_report_time|time:"H:i" }}{% else %}09:00{% endif %}</p>
   </div>
   <div class="card stat-card">
     <p class="stat-label">Active leave permissions (today)</p>
