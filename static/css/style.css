@@ -332,6 +332,7 @@ a:hover {
 }
 
 .filter-bar input[type="text"],
+.filter-bar input[type="password"],
 .filter-bar select,
 .data-table input[type="time"] {
   padding: 0.5rem 0.75rem;
@@ -347,6 +348,45 @@ a:hover {
 
 .grow {
   flex: 1 1 220px;
+}
+
+.auth-card {
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.auth-form input[type="text"],
+.auth-form input[type="password"] {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+}
+
+.check-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.admin-user-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-user-form input[type="password"] {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  min-width: 180px;
 }
 
 .text-error {

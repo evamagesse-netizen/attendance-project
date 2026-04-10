@@ -6,6 +6,8 @@ from django.urls import include, path
 from employees import views as employee_views
 
 urlpatterns = [
+    path("admin/dashboard/login/", employee_views.admin_dashboard_login, name="admin_dashboard_login"),
+    path("admin/dashboard/logout/", employee_views.admin_dashboard_logout, name="admin_dashboard_logout"),
     path("admin/dashboard/", employee_views.admin_dashboard, name="admin_dashboard"),
     path("admin/", admin.site.urls),
     path("", include("employees.urls")),

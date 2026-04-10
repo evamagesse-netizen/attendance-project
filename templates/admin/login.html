@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login · Attendance{% endblock %}
+
+{% block content %}
+<div class="container">
+  <section class="card auth-card">
+    <h1 class="page-title">Admin login</h1>
+    <p class="muted">Use the same credentials you use for Django admin.</p>
+
+    {% if messages %}
+      {% for message in messages %}
+        <p class="mb-0 {% if message.tags == 'error' %}text-error{% else %}text-success{% endif %}">{{ message }}</p>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" action="{% url 'admin_dashboard_login' %}" class="auth-form">
+      {% csrf_token %}
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" required>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required>
+
+      <button type="submit" class="btn btn--primary">Login</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

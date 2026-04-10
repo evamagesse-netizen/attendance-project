@@ -4,6 +4,7 @@ from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -16,10 +17,15 @@ from .models import Attendance, Employee, EmployeeSchedule, LeavePermission
 BARCODE_MAX_LEN = 128
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9\-_.]+$")
 SCAN_MODES = frozenset({"check-in", "check-out"})
+User = get_user_model()
 
 
 def _is_staff_user(user):
     return user.is_authenticated and user.is_staff
+
+
+def _is_superuser(user):
+    return user.is_authenticated and user.is_superuser
 
 
 def _parse_json_body(request):
@@ -318,6 +324,78 @@ def admin_dashboard(request):
             )
             return redirect("admin_dashboard")
 
+        if action == "create_admin":
+            if not request.user.is_superuser:
+                messages.error(request, "Only superusers can create admin users.")
+                return redirect("admin_dashboard")
+            username = (request.POST.get("username") or "").strip()
+            password = request.POST.get("password") or ""
+            is_superuser = request.POST.get("is_superuser") == "on"
+            if not username or not password:
+                messages.error(request, "Username and password are required.")
+                return redirect("admin_dashboard")
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username already exists.")
+                return redirect("admin_dashboard")
+
+            User.objects.create_user(
+                username=username,
+                password=password,
+                is_staff=True,
+                is_superuser=is_superuser,
+            )
+            messages.success(request, f"Admin user '{username}' created.")
+            return redirect("admin_dashboard")
+
+        if action == "update_admin":
+            if not request.user.is_superuser:
+                messages.error(request, "Only superusers can update admin users.")
+                return redirect("admin_dashboard")
+            user_id = request.POST.get("user_id")
+            new_password = request.POST.get("new_password") or ""
+            is_staff = request.POST.get("is_staff") == "on"
+            is_superuser = request.POST.get("is_superuser") == "on"
+            is_active = request.POST.get("is_active") == "on"
+            try:
+                admin_user = User.objects.get(pk=user_id)
+            except (User.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Invalid admin user selected.")
+                return redirect("admin_dashboard")
+
+            if admin_user == request.user and not is_staff:
+                messages.error(request, "You cannot remove your own staff access.")
+                return redirect("admin_dashboard")
+            if admin_user == request.user and not is_active:
+                messages.error(request, "You cannot deactivate your own account.")
+                return redirect("admin_dashboard")
+
+            admin_user.is_staff = is_staff
+            admin_user.is_superuser = is_superuser
+            admin_user.is_active = is_active
+            if new_password:
+                admin_user.set_password(new_password)
+            admin_user.save()
+            messages.success(request, f"Updated admin user '{admin_user.username}'.")
+            return redirect("admin_dashboard")
+
+        if action == "delete_admin":
+            if not request.user.is_superuser:
+                messages.error(request, "Only superusers can delete admin users.")
+                return redirect("admin_dashboard")
+            user_id = request.POST.get("user_id")
+            try:
+                admin_user = User.objects.get(pk=user_id)
+            except (User.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Invalid admin user selected.")
+                return redirect("admin_dashboard")
+            if admin_user == request.user:
+                messages.error(request, "You cannot delete your own account.")
+                return redirect("admin_dashboard")
+            username = admin_user.username
+            admin_user.delete()
+            messages.success(request, f"Deleted admin user '{username}'.")
+            return redirect("admin_dashboard")
+
         messages.error(request, "Unsupported action.")
         return redirect("admin_dashboard")
 
@@ -328,12 +406,40 @@ def admin_dashboard(request):
         .select_related("employee")
         .order_by("employee__name")
     )
+    admin_users = User.objects.filter(is_staff=True).order_by("username")
     return render(
         request,
         "admin/dashboard.html",
         {
             "employees": employees,
             "active_permissions": active_permissions,
+            "admin_users": admin_users,
             "today": today,
+            "can_manage_admins": request.user.is_superuser,
         },
     )
+
+
+@require_http_methods(["GET", "POST"])
+def admin_dashboard_login(request):
+    if request.user.is_authenticated and request.user.is_staff:
+        return redirect("admin_dashboard")
+
+    if request.method == "POST":
+        username = (request.POST.get("username") or "").strip()
+        password = request.POST.get("password") or ""
+        user = authenticate(request, username=username, password=password)
+        if user and user.is_staff and user.is_active:
+            login(request, user)
+            return redirect("admin_dashboard")
+        messages.error(request, "Invalid admin credentials.")
+
+    return render(request, "admin/login.html")
+
+
+@login_required
+@user_passes_test(_is_staff_user)
+@require_http_methods(["POST"])
+def admin_dashboard_logout(request):
+    logout(request)
+    return redirect("admin_dashboard_login")

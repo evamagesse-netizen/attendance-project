@@ -15,7 +15,11 @@
       <nav class="nav">
         <a href="{% url 'scanner' %}">Scanner</a>
         <a href="{% url 'dashboard' %}">Dashboard</a>
-        <a href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
+        {% if request.user.is_authenticated and request.user.is_staff %}
+          <a href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
+        {% else %}
+          <a href="{% url 'admin_dashboard_login' %}">Admin Login</a>
+        {% endif %}
       </nav>
     </div>
   </header>
