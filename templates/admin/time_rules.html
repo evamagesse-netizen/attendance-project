@@ -5,10 +5,10 @@
 {% block admin_content %}
 <section class="card table-card">
   <h1 class="page-title">Time rules</h1>
-  <p class="muted">Reporting time is global for all employees. Leave time is per employee.</p>
+  <p class="muted">Reporting and checkout times are global for all employees.</p>
   <form method="post" action="{% url 'admin_time_rules_page' %}" class="filter-bar">
     {% csrf_token %}
-    <input type="hidden" name="action" value="set_global_report_time">
+    <input type="hidden" name="action" value="set_global_times">
     <div>
       <label for="global_report_time">Global reporting time (all employees)</label>
       <input
@@ -19,46 +19,17 @@
         required
       >
     </div>
-    <button type="submit" class="btn btn--primary">Save global time</button>
+    <div>
+      <label for="global_checkout_time">Global checkout time (all employees)</label>
+      <input
+        id="global_checkout_time"
+        type="time"
+        name="checkout_time"
+        value="{% if global_checkout_time %}{{ global_checkout_time|time:'H:i' }}{% else %}17:00{% endif %}"
+        required
+      >
+    </div>
+    <button type="submit" class="btn btn--primary">Save global times</button>
   </form>
-</section>
-
-<section class="card table-card">
-  <h2 class="section-heading">Employee leave times</h2>
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Employee ID</th>
-          <th>Leave time</th>
-          <th>Save</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for emp in employees %}
-        <tr>
-          <td>{{ emp.name }}</td>
-          <td>{{ emp.employee_id }}</td>
-          <td>
-            <form method="post" action="{% url 'admin_time_rules_page' %}" class="inline-form">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="set_leave_time">
-              <input type="hidden" name="employee_id" value="{{ emp.id }}">
-              <input type="time" name="leave_time" value="{% if emp.schedule %}{{ emp.schedule.leave_time|time:'H:i' }}{% endif %}" required>
-          </td>
-          <td>
-              <button type="submit" class="btn btn--primary">Update</button>
-            </form>
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="4" class="muted">No employees registered.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 </section>
 {% endblock %}

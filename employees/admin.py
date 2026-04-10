@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Attendance, AttendancePolicy, Employee, EmployeeSchedule, LeavePermission
+from .models import Attendance, AttendancePolicy, Employee, LeavePermission
 
 
 @admin.register(Employee)
@@ -76,15 +76,9 @@ class AttendanceAdmin(admin.ModelAdmin):
     date_hierarchy = "date"
 
 
-@admin.register(EmployeeSchedule)
-class EmployeeScheduleAdmin(admin.ModelAdmin):
-    list_display = ("employee", "leave_time", "updated_at")
-    search_fields = ("employee__name", "employee__employee_id")
-
-
 @admin.register(AttendancePolicy)
 class AttendancePolicyAdmin(admin.ModelAdmin):
-    list_display = ("report_time", "updated_at")
+    list_display = ("report_time", "checkout_time", "updated_at")
 
 
 @admin.register(LeavePermission)

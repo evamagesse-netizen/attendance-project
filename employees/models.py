@@ -58,24 +58,16 @@ class Employee(models.Model):
             super().save(update_fields=["barcode_image"])
 
 
-class EmployeeSchedule(models.Model):
-    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, related_name="schedule")
-    leave_time = models.TimeField(help_text="Earliest allowed check-out time.")
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["employee__name"]
-
-    def __str__(self):
-        return f"Schedule for {self.employee.name}"
-
-
 class AttendancePolicy(models.Model):
     report_time = models.TimeField(default=dt_time(9, 0), help_text="Global expected check-in time.")
+    checkout_time = models.TimeField(default=dt_time(17, 0), help_text="Global earliest allowed check-out time.")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Global policy (report at {self.report_time.strftime('%H:%M')})"
+        return (
+            "Global policy "
+            f"(report {self.report_time.strftime('%H:%M')}, checkout {self.checkout_time.strftime('%H:%M')})"
+        )
 
 
 class LeavePermission(models.Model):
