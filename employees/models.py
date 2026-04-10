@@ -1,5 +1,7 @@
 from datetime import time as dt_time
 
+from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -11,6 +13,10 @@ def _employee_barcode_upload(instance, filename):
 
 
 class Employee(models.Model):
+    barcode_digits_validator = RegexValidator(
+        regex=r"^\d+$",
+        message="Barcode must contain numbers only.",
+    )
     name = models.CharField(max_length=200)
     employee_id = models.CharField(max_length=64, unique=True, db_index=True)
     barcode = models.CharField(
@@ -19,6 +25,7 @@ class Employee(models.Model):
         db_index=True,
         blank=True,
         help_text="Leave empty when adding an employee; a unique code is generated automatically.",
+        validators=[barcode_digits_validator],
     )
     barcode_image = models.FileField(
         upload_to=_employee_barcode_upload,
@@ -44,6 +51,8 @@ class Employee(models.Model):
 
         if self.barcode is not None:
             self.barcode = str(self.barcode).strip()
+            if self.barcode and not self.barcode.isdigit():
+                raise ValidationError({"barcode": "Barcode must contain numbers only."})
 
         if not self.barcode:
             self.barcode = generate_unique_barcode()

@@ -16,7 +16,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from .models import Attendance, AttendancePolicy, Employee, LeavePermission
 
 BARCODE_MAX_LEN = 128
-BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9\-_.]+$")
+BARCODE_PATTERN = re.compile(r"^\d+$")
 SCAN_MODES = frozenset({"check-in", "check-out"})
 User = get_user_model()
 
@@ -56,7 +56,7 @@ def _validate_barcode(raw):
     if len(barcode) > BARCODE_MAX_LEN:
         return None, f"Barcode must be at most {BARCODE_MAX_LEN} characters."
     if not BARCODE_PATTERN.match(barcode):
-        return None, "Barcode may only contain letters, numbers, hyphen, underscore, and period."
+        return None, "Barcode must contain numbers only."
     return barcode, None
 
 

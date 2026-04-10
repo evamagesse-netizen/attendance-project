@@ -5,11 +5,11 @@ from django.core.files.base import ContentFile
 
 
 def generate_unique_barcode():
-    """Return a unique barcode string (hex, scanner-safe)."""
+    """Return a unique numeric barcode string."""
     from .models import Employee
 
     for _ in range(128):
-        candidate = secrets.token_hex(8)
+        candidate = str(secrets.randbelow(10**12)).zfill(12)
         if not Employee.objects.filter(barcode=candidate).exists():
             return candidate
     raise RuntimeError("Could not generate a unique barcode.")
