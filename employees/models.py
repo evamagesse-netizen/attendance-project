@@ -1,6 +1,7 @@
 from datetime import time as dt_time
 
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 
@@ -57,6 +58,41 @@ class Employee(models.Model):
             super().save(update_fields=["barcode_image"])
 
 
+class EmployeeSchedule(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, related_name="schedule")
+    report_time = models.TimeField(help_text="Expected check-in time.")
+    leave_time = models.TimeField(help_text="Earliest allowed check-out time.")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["employee__name"]
+
+    def __str__(self):
+        return f"Schedule for {self.employee.name}"
+
+
+class LeavePermission(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="leave_permissions")
+    date = models.DateField(db_index=True)
+    approved_by = models.CharField(max_length=150)
+    reason = models.CharField(max_length=255, blank=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "date"],
+                condition=Q(used_at__isnull=True),
+                name="unique_unused_leave_permission_per_day",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Leave permission for {self.employee.name} on {self.date}"
+
+
 class Attendance(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="attendance_records")
     date = models.DateField(db_index=True)
@@ -74,6 +110,8 @@ class Attendance(models.Model):
 
     @property
     def is_late_check_in(self):
-        """Check-in after 9:00 AM in the active timezone."""
+        """Check-in after scheduled report time (fallback 9:00 AM)."""
         local = timezone.localtime(self.check_in)
-        return local.time() > dt_time(9, 0)
+        schedule = getattr(self.employee, "schedule", None)
+        expected = schedule.report_time if schedule else dt_time(9, 0)
+        return local.time() > expected

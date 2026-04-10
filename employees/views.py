@@ -3,17 +3,23 @@ import re
 from datetime import datetime
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Attendance, Employee
+from .models import Attendance, Employee, EmployeeSchedule, LeavePermission
 
 BARCODE_MAX_LEN = 128
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9\-_.]+$")
 SCAN_MODES = frozenset({"check-in", "check-out"})
+
+
+def _is_staff_user(user):
+    return user.is_authenticated and user.is_staff
 
 
 def _parse_json_body(request):
@@ -187,6 +193,34 @@ def scan_barcode(request):
             status=409,
         )
 
+    local_now = timezone.localtime(now)
+    schedule = getattr(employee, "schedule", None)
+    if schedule and local_now.time() < schedule.leave_time:
+        permission = (
+            LeavePermission.objects.filter(
+                employee=employee,
+                date=today,
+                used_at__isnull=True,
+            )
+            .order_by("created_at")
+            .first()
+        )
+        if permission is None:
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "action": None,
+                    "employee_name": employee.name,
+                    "message": (
+                        f"Check-out is allowed after {schedule.leave_time.strftime('%H:%M')}. "
+                        "Please request admin permission for early leave."
+                    ),
+                },
+                status=403,
+            )
+        permission.used_at = now
+        permission.save(update_fields=["used_at"])
+
     attendance.check_out = now
     attendance.save(update_fields=["check_out"])
 
@@ -197,4 +231,109 @@ def scan_barcode(request):
             "employee_name": employee.name,
             "message": f"Goodbye, {employee.name}.",
         }
+    )
+
+
+@login_required
+@user_passes_test(_is_staff_user)
+@require_http_methods(["GET", "POST"])
+def admin_time_rules(request):
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "set_schedule":
+            employee_id = request.POST.get("employee_id")
+            report_time = request.POST.get("report_time")
+            leave_time = request.POST.get("leave_time")
+
+            try:
+                employee = Employee.objects.get(pk=employee_id)
+            except (Employee.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Invalid employee selected.")
+                return redirect("admin_time_rules")
+
+            if not report_time or not leave_time:
+                messages.error(request, "Both report time and leave time are required.")
+                return redirect("admin_time_rules")
+
+            try:
+                parsed_report_time = datetime.strptime(report_time, "%H:%M").time()
+                parsed_leave_time = datetime.strptime(leave_time, "%H:%M").time()
+            except ValueError:
+                messages.error(request, "Invalid time format.")
+                return redirect("admin_time_rules")
+
+            if parsed_leave_time <= parsed_report_time:
+                messages.error(request, "Leave time must be after report time.")
+                return redirect("admin_time_rules")
+
+            EmployeeSchedule.objects.update_or_create(
+                employee=employee,
+                defaults={
+                    "report_time": parsed_report_time,
+                    "leave_time": parsed_leave_time,
+                },
+            )
+            messages.success(request, f"Updated time rules for {employee.name}.")
+            return redirect("admin_time_rules")
+
+        if action == "grant_permission":
+            employee_id = request.POST.get("employee_id")
+            reason = (request.POST.get("reason") or "").strip()
+            date_raw = request.POST.get("date")
+
+            try:
+                employee = Employee.objects.get(pk=employee_id)
+            except (Employee.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Invalid employee selected.")
+                return redirect("admin_time_rules")
+
+            if not date_raw:
+                permission_date = timezone.localdate()
+            else:
+                try:
+                    permission_date = datetime.strptime(date_raw, "%Y-%m-%d").date()
+                except ValueError:
+                    messages.error(request, "Invalid permission date.")
+                    return redirect("admin_time_rules")
+
+            permission = LeavePermission.objects.filter(
+                employee=employee,
+                date=permission_date,
+                used_at__isnull=True,
+            ).first()
+            if permission:
+                permission.approved_by = request.user.get_username() or "admin"
+                permission.reason = reason
+                permission.save(update_fields=["approved_by", "reason"])
+            else:
+                LeavePermission.objects.create(
+                    employee=employee,
+                    date=permission_date,
+                    approved_by=request.user.get_username() or "admin",
+                    reason=reason,
+                )
+            messages.success(
+                request,
+                f"Permission granted for {employee.name} on {permission_date}.",
+            )
+            return redirect("admin_time_rules")
+
+        messages.error(request, "Unsupported action.")
+        return redirect("admin_time_rules")
+
+    employees = Employee.objects.all().select_related("schedule")
+    today = timezone.localdate()
+    active_permissions = (
+        LeavePermission.objects.filter(date=today, used_at__isnull=True)
+        .select_related("employee")
+        .order_by("employee__name")
+    )
+    return render(
+        request,
+        "employees/admin_time_rules.html",
+        {
+            "employees": employees,
+            "active_permissions": active_permissions,
+            "today": today,
+        },
     )

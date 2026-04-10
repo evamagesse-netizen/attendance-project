@@ -331,6 +331,32 @@ a:hover {
   font-size: 1rem;
 }
 
+.filter-bar input[type="text"],
+.filter-bar select,
+.data-table input[type="time"] {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  background: #fff;
+}
+
+.inline-form {
+  display: contents;
+}
+
+.grow {
+  flex: 1 1 220px;
+}
+
+.text-error {
+  color: var(--error);
+}
+
+.text-success {
+  color: var(--success);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

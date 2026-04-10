@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Time Rules · Attendance{% endblock %}
+
+{% block content %}
+<div class="container dashboard-page">
+  <h1 class="page-title">Admin time rules</h1>
+  <p class="muted">Set each employee's report and leave time, then grant temporary leave permission when needed.</p>
+
+  {% if messages %}
+    <section class="card">
+      {% for message in messages %}
+        <p class="mb-0 {% if message.tags == 'error' %}text-error{% else %}text-success{% endif %}">{{ message }}</p>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <section class="card table-card">
+    <h2 class="section-heading">All employees</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Employee ID</th>
+            <th>Report time</th>
+            <th>Leave time</th>
+            <th>Save</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in employees %}
+          <tr>
+            <td>{{ emp.name }}</td>
+            <td>{{ emp.employee_id }}</td>
+            <td>
+              <form method="post" action="{% url 'admin_time_rules' %}" class="inline-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_schedule">
+                <input type="hidden" name="employee_id" value="{{ emp.id }}">
+                <input type="time" name="report_time" value="{% if emp.schedule %}{{ emp.schedule.report_time|time:'H:i' }}{% endif %}" required>
+            </td>
+            <td>
+                <input type="time" name="leave_time" value="{% if emp.schedule %}{{ emp.schedule.leave_time|time:'H:i' }}{% endif %}" required>
+            </td>
+            <td>
+                <button type="submit" class="btn btn--primary">Update</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="muted">No employees registered.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card table-card">
+    <h2 class="section-heading">Grant leave permission</h2>
+    <form method="post" action="{% url 'admin_time_rules' %}" class="filter-bar">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="grant_permission">
+      <div>
+        <label for="employee_id">Employee</label>
+        <select id="employee_id" name="employee_id" required>
+          <option value="">Select employee</option>
+          {% for emp in employees %}
+            <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.employee_id }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="date">Date</label>
+        <input type="date" id="date" name="date" value="{{ today|date:'Y-m-d' }}" required>
+      </div>
+      <div class="grow">
+        <label for="reason">Reason (optional)</label>
+        <input type="text" id="reason" name="reason" maxlength="255" placeholder="Emergency, approved meeting, etc.">
+      </div>
+      <button type="submit" class="btn btn--primary">Grant permission</button>
+    </form>
+  </section>
+
+  <section class="card table-card">
+    <h2 class="section-heading">Active permissions for {{ today|date:"M j, Y" }}</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Approved by</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in active_permissions %}
+          <tr>
+            <td>{{ p.employee.name }}</td>
+            <td>{{ p.approved_by }}</td>
+            <td>{% if p.reason %}{{ p.reason }}{% else %}—{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="muted">No active permissions today.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
