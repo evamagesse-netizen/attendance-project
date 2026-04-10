@@ -1,0 +1,84 @@
+{% extends "admin/dashboard_base.html" %}
+
+{% block title %}Admin Users · Attendance{% endblock %}
+
+{% block admin_content %}
+<section class="card table-card">
+  <h1 class="page-title">Admin users</h1>
+  {% if can_manage_admins %}
+  <form method="post" action="{% url 'admin_users_page' %}" class="filter-bar">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create_admin">
+    <div>
+      <label for="new_admin_username">Username</label>
+      <input id="new_admin_username" name="username" type="text" required>
+    </div>
+    <div>
+      <label for="new_admin_password">Password</label>
+      <input id="new_admin_password" name="password" type="password" required>
+    </div>
+    <label class="check-inline"><input type="checkbox" name="is_superuser"> Superuser</label>
+    <button type="submit" class="btn btn--primary">Add admin</button>
+  </form>
+  {% else %}
+  <p class="muted">Only superusers can add, update, or delete admins.</p>
+  {% endif %}
+</section>
+
+<section class="card table-card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Active</th>
+          <th>Update</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in admin_users %}
+        <tr>
+          <td>{{ u.username }}</td>
+          <td>{% if u.is_superuser %}Superuser{% else %}Staff{% endif %}</td>
+          <td>{% if u.is_active %}Yes{% else %}No{% endif %}</td>
+          <td>
+            {% if can_manage_admins %}
+            <form method="post" action="{% url 'admin_users_page' %}" class="admin-user-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update_admin">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <input type="password" name="new_password" placeholder="New password (optional)">
+              <label class="check-inline"><input type="checkbox" name="is_staff" {% if u.is_staff %}checked{% endif %}> Staff</label>
+              <label class="check-inline"><input type="checkbox" name="is_superuser" {% if u.is_superuser %}checked{% endif %}> Superuser</label>
+              <label class="check-inline"><input type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %}> Active</label>
+              <button type="submit" class="btn btn--primary">Save</button>
+            </form>
+            {% else %}
+            <span class="muted">No permission</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if can_manage_admins %}
+            <form method="post" action="{% url 'admin_users_page' %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_admin">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <button type="submit" class="btn">Delete</button>
+            </form>
+            {% else %}
+            <span class="muted">No permission</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="muted">No admin users found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

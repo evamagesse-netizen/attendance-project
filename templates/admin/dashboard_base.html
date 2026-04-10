@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container admin-layout">
+  <aside class="card admin-drawer">
+    <h2 class="section-heading">Admin menu</h2>
+    <nav class="admin-drawer-nav">
+      <a class="{% if admin_section == 'overview' %}is-active{% endif %}" href="{% url 'admin_dashboard' %}">Overview</a>
+      <a class="{% if admin_section == 'time-rules' %}is-active{% endif %}" href="{% url 'admin_time_rules_page' %}">Employee time rules</a>
+      <a class="{% if admin_section == 'permissions' %}is-active{% endif %}" href="{% url 'admin_leave_permissions_page' %}">Leave permissions</a>
+      <a class="{% if admin_section == 'admins' %}is-active{% endif %}" href="{% url 'admin_users_page' %}">Admin users</a>
+    </nav>
+    <form method="post" action="{% url 'admin_dashboard_logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn">Logout</button>
+    </form>
+  </aside>
+
+  <section class="admin-content">
+    {% if messages %}
+      <section class="card">
+        {% for message in messages %}
+          <p class="mb-0 {% if message.tags == 'error' %}text-error{% else %}text-success{% endif %}">{{ message }}</p>
+        {% endfor %}
+      </section>
+    {% endif %}
+    {% block admin_content %}{% endblock %}
+  </section>
+</div>
+{% endblock %}

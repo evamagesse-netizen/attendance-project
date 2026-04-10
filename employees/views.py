@@ -242,102 +242,166 @@ def scan_barcode(request):
 
 @login_required
 @user_passes_test(_is_staff_user)
-@require_http_methods(["GET", "POST"])
+@require_GET
 def admin_dashboard(request):
+    today = timezone.localdate()
+    total_employees = Employee.objects.count()
+    configured_schedules = EmployeeSchedule.objects.count()
+    active_permissions_count = LeavePermission.objects.filter(
+        date=today, used_at__isnull=True
+    ).count()
+    total_admin_users = User.objects.filter(is_staff=True).count()
+    return render(
+        request,
+        "admin/dashboard_home.html",
+        {
+            "today": today,
+            "total_employees": total_employees,
+            "configured_schedules": configured_schedules,
+            "active_permissions_count": active_permissions_count,
+            "total_admin_users": total_admin_users,
+            "can_manage_admins": request.user.is_superuser,
+            "admin_section": "overview",
+        },
+    )
+
+
+@login_required
+@user_passes_test(_is_staff_user)
+@require_http_methods(["GET", "POST"])
+def admin_time_rules_page(request):
     if request.method == "POST":
-        action = request.POST.get("action")
-        if action == "set_schedule":
-            employee_id = request.POST.get("employee_id")
-            report_time = request.POST.get("report_time")
-            leave_time = request.POST.get("leave_time")
+        employee_id = request.POST.get("employee_id")
+        report_time = request.POST.get("report_time")
+        leave_time = request.POST.get("leave_time")
 
+        try:
+            employee = Employee.objects.get(pk=employee_id)
+        except (Employee.DoesNotExist, ValueError, TypeError):
+            messages.error(request, "Invalid employee selected.")
+            return redirect("admin_time_rules_page")
+
+        if not report_time or not leave_time:
+            messages.error(request, "Both report time and leave time are required.")
+            return redirect("admin_time_rules_page")
+
+        try:
+            parsed_report_time = datetime.strptime(report_time, "%H:%M").time()
+            parsed_leave_time = datetime.strptime(leave_time, "%H:%M").time()
+        except ValueError:
+            messages.error(request, "Invalid time format.")
+            return redirect("admin_time_rules_page")
+
+        if parsed_leave_time <= parsed_report_time:
+            messages.error(request, "Leave time must be after report time.")
+            return redirect("admin_time_rules_page")
+
+        EmployeeSchedule.objects.update_or_create(
+            employee=employee,
+            defaults={
+                "report_time": parsed_report_time,
+                "leave_time": parsed_leave_time,
+            },
+        )
+        messages.success(request, f"Updated time rules for {employee.name}.")
+        return redirect("admin_time_rules_page")
+
+    employees = Employee.objects.all().select_related("schedule")
+    return render(
+        request,
+        "admin/time_rules.html",
+        {
+            "employees": employees,
+            "admin_section": "time-rules",
+        },
+    )
+
+
+@login_required
+@user_passes_test(_is_staff_user)
+@require_http_methods(["GET", "POST"])
+def admin_leave_permissions_page(request):
+    today = timezone.localdate()
+    if request.method == "POST":
+        employee_id = request.POST.get("employee_id")
+        reason = (request.POST.get("reason") or "").strip()
+        date_raw = request.POST.get("date")
+
+        try:
+            employee = Employee.objects.get(pk=employee_id)
+        except (Employee.DoesNotExist, ValueError, TypeError):
+            messages.error(request, "Invalid employee selected.")
+            return redirect("admin_leave_permissions_page")
+
+        if not date_raw:
+            permission_date = today
+        else:
             try:
-                employee = Employee.objects.get(pk=employee_id)
-            except (Employee.DoesNotExist, ValueError, TypeError):
-                messages.error(request, "Invalid employee selected.")
-                return redirect("admin_dashboard")
-
-            if not report_time or not leave_time:
-                messages.error(request, "Both report time and leave time are required.")
-                return redirect("admin_dashboard")
-
-            try:
-                parsed_report_time = datetime.strptime(report_time, "%H:%M").time()
-                parsed_leave_time = datetime.strptime(leave_time, "%H:%M").time()
+                permission_date = datetime.strptime(date_raw, "%Y-%m-%d").date()
             except ValueError:
-                messages.error(request, "Invalid time format.")
-                return redirect("admin_dashboard")
+                messages.error(request, "Invalid permission date.")
+                return redirect("admin_leave_permissions_page")
 
-            if parsed_leave_time <= parsed_report_time:
-                messages.error(request, "Leave time must be after report time.")
-                return redirect("admin_dashboard")
-
-            EmployeeSchedule.objects.update_or_create(
-                employee=employee,
-                defaults={
-                    "report_time": parsed_report_time,
-                    "leave_time": parsed_leave_time,
-                },
-            )
-            messages.success(request, f"Updated time rules for {employee.name}.")
-            return redirect("admin_dashboard")
-
-        if action == "grant_permission":
-            employee_id = request.POST.get("employee_id")
-            reason = (request.POST.get("reason") or "").strip()
-            date_raw = request.POST.get("date")
-
-            try:
-                employee = Employee.objects.get(pk=employee_id)
-            except (Employee.DoesNotExist, ValueError, TypeError):
-                messages.error(request, "Invalid employee selected.")
-                return redirect("admin_dashboard")
-
-            if not date_raw:
-                permission_date = timezone.localdate()
-            else:
-                try:
-                    permission_date = datetime.strptime(date_raw, "%Y-%m-%d").date()
-                except ValueError:
-                    messages.error(request, "Invalid permission date.")
-                    return redirect("admin_dashboard")
-
-            permission = LeavePermission.objects.filter(
+        permission = LeavePermission.objects.filter(
+            employee=employee,
+            date=permission_date,
+            used_at__isnull=True,
+        ).first()
+        if permission:
+            permission.approved_by = request.user.get_username() or "admin"
+            permission.reason = reason
+            permission.save(update_fields=["approved_by", "reason"])
+        else:
+            LeavePermission.objects.create(
                 employee=employee,
                 date=permission_date,
-                used_at__isnull=True,
-            ).first()
-            if permission:
-                permission.approved_by = request.user.get_username() or "admin"
-                permission.reason = reason
-                permission.save(update_fields=["approved_by", "reason"])
-            else:
-                LeavePermission.objects.create(
-                    employee=employee,
-                    date=permission_date,
-                    approved_by=request.user.get_username() or "admin",
-                    reason=reason,
-                )
-            messages.success(
-                request,
-                f"Permission granted for {employee.name} on {permission_date}.",
+                approved_by=request.user.get_username() or "admin",
+                reason=reason,
             )
-            return redirect("admin_dashboard")
+        messages.success(
+            request,
+            f"Permission granted for {employee.name} on {permission_date}.",
+        )
+        return redirect("admin_leave_permissions_page")
 
+    employees = Employee.objects.all().order_by("name")
+    active_permissions = (
+        LeavePermission.objects.filter(date=today, used_at__isnull=True)
+        .select_related("employee")
+        .order_by("employee__name")
+    )
+    return render(
+        request,
+        "admin/leave_permissions.html",
+        {
+            "employees": employees,
+            "active_permissions": active_permissions,
+            "today": today,
+            "admin_section": "permissions",
+        },
+    )
+
+
+@login_required
+@user_passes_test(_is_staff_user)
+@require_http_methods(["GET", "POST"])
+def admin_users_page(request):
+    if request.method == "POST":
+        if not request.user.is_superuser:
+            messages.error(request, "Only superusers can manage admin users.")
+            return redirect("admin_users_page")
+
+        action = request.POST.get("action")
         if action == "create_admin":
-            if not request.user.is_superuser:
-                messages.error(request, "Only superusers can create admin users.")
-                return redirect("admin_dashboard")
             username = (request.POST.get("username") or "").strip()
             password = request.POST.get("password") or ""
             is_superuser = request.POST.get("is_superuser") == "on"
             if not username or not password:
                 messages.error(request, "Username and password are required.")
-                return redirect("admin_dashboard")
+                return redirect("admin_users_page")
             if User.objects.filter(username=username).exists():
                 messages.error(request, "Username already exists.")
-                return redirect("admin_dashboard")
-
+                return redirect("admin_users_page")
             User.objects.create_user(
                 username=username,
                 password=password,
@@ -345,12 +409,9 @@ def admin_dashboard(request):
                 is_superuser=is_superuser,
             )
             messages.success(request, f"Admin user '{username}' created.")
-            return redirect("admin_dashboard")
+            return redirect("admin_users_page")
 
         if action == "update_admin":
-            if not request.user.is_superuser:
-                messages.error(request, "Only superusers can update admin users.")
-                return redirect("admin_dashboard")
             user_id = request.POST.get("user_id")
             new_password = request.POST.get("new_password") or ""
             is_staff = request.POST.get("is_staff") == "on"
@@ -360,14 +421,14 @@ def admin_dashboard(request):
                 admin_user = User.objects.get(pk=user_id)
             except (User.DoesNotExist, ValueError, TypeError):
                 messages.error(request, "Invalid admin user selected.")
-                return redirect("admin_dashboard")
+                return redirect("admin_users_page")
 
             if admin_user == request.user and not is_staff:
                 messages.error(request, "You cannot remove your own staff access.")
-                return redirect("admin_dashboard")
+                return redirect("admin_users_page")
             if admin_user == request.user and not is_active:
                 messages.error(request, "You cannot deactivate your own account.")
-                return redirect("admin_dashboard")
+                return redirect("admin_users_page")
 
             admin_user.is_staff = is_staff
             admin_user.is_superuser = is_superuser
@@ -376,46 +437,34 @@ def admin_dashboard(request):
                 admin_user.set_password(new_password)
             admin_user.save()
             messages.success(request, f"Updated admin user '{admin_user.username}'.")
-            return redirect("admin_dashboard")
+            return redirect("admin_users_page")
 
         if action == "delete_admin":
-            if not request.user.is_superuser:
-                messages.error(request, "Only superusers can delete admin users.")
-                return redirect("admin_dashboard")
             user_id = request.POST.get("user_id")
             try:
                 admin_user = User.objects.get(pk=user_id)
             except (User.DoesNotExist, ValueError, TypeError):
                 messages.error(request, "Invalid admin user selected.")
-                return redirect("admin_dashboard")
+                return redirect("admin_users_page")
             if admin_user == request.user:
                 messages.error(request, "You cannot delete your own account.")
-                return redirect("admin_dashboard")
+                return redirect("admin_users_page")
             username = admin_user.username
             admin_user.delete()
             messages.success(request, f"Deleted admin user '{username}'.")
-            return redirect("admin_dashboard")
+            return redirect("admin_users_page")
 
         messages.error(request, "Unsupported action.")
-        return redirect("admin_dashboard")
+        return redirect("admin_users_page")
 
-    employees = Employee.objects.all().select_related("schedule")
-    today = timezone.localdate()
-    active_permissions = (
-        LeavePermission.objects.filter(date=today, used_at__isnull=True)
-        .select_related("employee")
-        .order_by("employee__name")
-    )
     admin_users = User.objects.filter(is_staff=True).order_by("username")
     return render(
         request,
-        "admin/dashboard.html",
+        "admin/admin_users.html",
         {
-            "employees": employees,
-            "active_permissions": active_permissions,
             "admin_users": admin_users,
-            "today": today,
             "can_manage_admins": request.user.is_superuser,
+            "admin_section": "admins",
         },
     )
 

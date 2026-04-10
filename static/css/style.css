@@ -389,6 +389,54 @@ a:hover {
   min-width: 180px;
 }
 
+.admin-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .admin-layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.admin-drawer {
+  position: sticky;
+  top: 78px;
+}
+
+.admin-drawer-nav {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.admin-drawer-nav a {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.admin-drawer-nav a:hover {
+  background: #eef2ff;
+  text-decoration: none;
+}
+
+.admin-drawer-nav a.is-active {
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  font-weight: 600;
+}
+
+.admin-content {
+  display: grid;
+  gap: 1rem;
+}
+
 .text-error {
   color: var(--error);
 }

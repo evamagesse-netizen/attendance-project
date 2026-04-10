@@ -1,0 +1,47 @@
+{% extends "admin/dashboard_base.html" %}
+
+{% block title %}Employee Time Rules · Attendance{% endblock %}
+
+{% block admin_content %}
+<section class="card table-card">
+  <h1 class="page-title">Employees and schedules</h1>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Employee ID</th>
+          <th>Report time</th>
+          <th>Leave time</th>
+          <th>Save</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr>
+          <td>{{ emp.name }}</td>
+          <td>{{ emp.employee_id }}</td>
+          <td>
+            <form method="post" action="{% url 'admin_time_rules_page' %}" class="inline-form">
+              {% csrf_token %}
+              <input type="hidden" name="employee_id" value="{{ emp.id }}">
+              <input type="time" name="report_time" value="{% if emp.schedule %}{{ emp.schedule.report_time|time:'H:i' }}{% endif %}" required>
+          </td>
+          <td>
+              <input type="time" name="leave_time" value="{% if emp.schedule %}{{ emp.schedule.leave_time|time:'H:i' }}{% endif %}" required>
+          </td>
+          <td>
+              <button type="submit" class="btn btn--primary">Update</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="muted">No employees registered.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

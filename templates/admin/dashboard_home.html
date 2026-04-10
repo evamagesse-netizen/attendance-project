@@ -1,0 +1,33 @@
+{% extends "admin/dashboard_base.html" %}
+
+{% block title %}Admin Dashboard · Attendance{% endblock %}
+
+{% block admin_content %}
+<section class="card">
+  <h1 class="page-title">Admin dashboard</h1>
+  <p class="muted">Use the navigation drawer to manage each admin section separately.</p>
+</section>
+
+<section class="stats-grid">
+  <div class="card stat-card">
+    <p class="stat-label">Employees</p>
+    <p class="stat-value">{{ total_employees }}</p>
+  </div>
+  <div class="card stat-card">
+    <p class="stat-label">Schedules configured</p>
+    <p class="stat-value stat-value--indigo">{{ configured_schedules }}</p>
+  </div>
+  <div class="card stat-card">
+    <p class="stat-label">Active leave permissions (today)</p>
+    <p class="stat-value stat-value--success">{{ active_permissions_count }}</p>
+  </div>
+</section>
+
+<section class="card table-card">
+  <h2 class="section-heading">Admin accounts</h2>
+  <p class="mb-0 muted">Total admin users: <strong>{{ total_admin_users }}</strong></p>
+  {% if not can_manage_admins %}
+  <p class="muted mb-0">You are staff. Only superusers can manage admin users.</p>
+  {% endif %}
+</section>
+{% endblock %}

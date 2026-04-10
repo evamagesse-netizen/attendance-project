@@ -1,0 +1,58 @@
+{% extends "admin/dashboard_base.html" %}
+
+{% block title %}Leave Permissions · Attendance{% endblock %}
+
+{% block admin_content %}
+<section class="card table-card">
+  <h1 class="page-title">Grant leave permission</h1>
+  <form method="post" action="{% url 'admin_leave_permissions_page' %}" class="filter-bar">
+    {% csrf_token %}
+    <div>
+      <label for="employee_id">Employee</label>
+      <select id="employee_id" name="employee_id" required>
+        <option value="">Select employee</option>
+        {% for emp in employees %}
+          <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.employee_id }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="date">Date</label>
+      <input type="date" id="date" name="date" value="{{ today|date:'Y-m-d' }}" required>
+    </div>
+    <div class="grow">
+      <label for="reason">Reason (optional)</label>
+      <input type="text" id="reason" name="reason" maxlength="255" placeholder="Emergency, approved meeting, etc.">
+    </div>
+    <button type="submit" class="btn btn--primary">Grant permission</button>
+  </form>
+</section>
+
+<section class="card table-card">
+  <h2 class="section-heading">Active permissions for {{ today|date:"M j, Y" }}</h2>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Approved by</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in active_permissions %}
+        <tr>
+          <td>{{ p.employee.name }}</td>
+          <td>{{ p.approved_by }}</td>
+          <td>{% if p.reason %}{{ p.reason }}{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="muted">No active permissions today.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
